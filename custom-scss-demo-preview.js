@@ -29,14 +29,7 @@
 				deferred.resolve();
 				return deferred.promise();
 			}
-		},
-
-		/**
-		 * Prevent adding edit shortcuts to head.
-		 *
-		 * @todo Core should prevent adding edit shortcuts if the placement is not inside of the body.
-		 */
-		createEditShortcutForPlacement: function() {}
+		}
 
 	} );
 
