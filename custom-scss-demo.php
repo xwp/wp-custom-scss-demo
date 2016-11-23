@@ -99,19 +99,36 @@ function filter_customize_value( $css, \WP_Customize_Custom_CSS_Setting $setting
  * The reverse operation is done in `filter_customize_value()` when reading the
  * value out of the `custom_css` post.
  *
- * @param array                            $post_content_args The post_content_args.
- * @param string                           $css               The (S)CSS being saved.
- * @param \WP_Customize_Custom_CSS_Setting $setting           Custom CSS Setting.
+ * @param array $data {
+ *     Custom CSS data.
+ *
+ *     @type string $css          CSS stored in `post_content`.
+ *     @type string $preprocessed Pre-processed CSS stored in `post_content_filtered`. Normally empty string.
+ * }
  * @return array Post content args.
  */
-function filter_custom_css_post_content_args( $post_content_args, $css, $setting ) {
-	unset( $css );
-	$preprocessor_setting = $setting->manager->get_setting( 'custom_css_preprocessor' );
-	if ( $preprocessor_setting && 'scss' === $preprocessor_setting->post_value( $preprocessor_setting->value() ) ) {
-		$post_content_args['post_content_filtered'] = $post_content_args['post_content']; // Stash original SCSS in post_content_filtered.
-		$post_content_args['post_content'] = transpile_scss( $post_content_args['post_content'] );
+function filter_update_custom_css_data( $data ) {
+	global $wp_customize;
+
+	/*
+	 * When updating custom_css in the customizer, make sure that custom_css_preprocessor
+	 * setting is saved up-front so that the value of the theme mod will be available
+	 * determining whether transpilation needs to occur. This is needed because during
+	 * customize_save the preview filters are not applied and the custom_css_preprocessor
+	 * setting could be saved *after* the custom_css setting.
+	 */
+	if ( $wp_customize instanceof \WP_Customize_Manager && did_action( 'customize_save' ) && ! did_action( 'customize_save_custom_css_preprocessor' ) ) {
+		$preprocessor_setting = $wp_customize->get_setting( 'custom_css_preprocessor' );
+		if ( $preprocessor_setting ) {
+			$preprocessor_setting->save();
+		}
 	}
-	return $post_content_args;
+
+	if ( 'scss' === get_theme_mod( 'custom_css_preprocessor' ) ) {
+		$data['preprocessed'] = $data['css']; // Stash original SCSS in post_content_filtered.
+		$data['css'] = transpile_scss( $data['preprocessed'] );
+	}
+	return $data;
 }
 
 /**
@@ -171,7 +188,7 @@ function register_controls( \WP_Customize_Manager $wp_customize ) {
 	add_filter( 'customize_value_custom_css', __NAMESPACE__ . '\filter_customize_value', 10, 2 );
 
 	// Ensure that the SCSS gets stored in post_content_filtered, and transpiled CSS in post_content.
-	add_filter( 'customize_update_custom_css_post_content_args', __NAMESPACE__ . '\filter_custom_css_post_content_args', 10, 3 );
+	add_filter( 'update_custom_css_data', __NAMESPACE__ . '\filter_update_custom_css_data', 10 );
 }
 add_action( 'customize_register', __NAMESPACE__ . '\register_controls', 20 );
 
