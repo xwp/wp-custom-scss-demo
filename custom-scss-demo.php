@@ -196,3 +196,19 @@ function register_selective_refresh_partial( \WP_Customize_Manager $wp_customize
 	) );
 }
 add_action( 'customize_register', __NAMESPACE__ . '\register_selective_refresh_partial' );
+
+/**
+ * Filter revisioned fields for `custom_css` posts.
+ *
+ * @param array $fields Fields.
+ * @param array $post   Post.
+ * @return array Fields.
+ */
+function filter_custom_css_post_revision_fields( $fields, $post ) {
+	if ( 'custom_css' === $post['post_type'] ) {
+		$fields['post_content'] = __( 'CSS', 'custom-scss-demo' );
+		$fields['post_content_filtered'] = __( 'Pre-processed CSS', 'custom-scss-demo' );
+	}
+	return $fields;
+}
+add_filter( '_wp_post_revision_fields', __NAMESPACE__ .  '\filter_custom_css_post_revision_fields', 10, 2 );
